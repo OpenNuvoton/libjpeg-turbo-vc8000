@@ -4,7 +4,7 @@
  * This file was part of the Independent JPEG Group's software:
  * Copyright (C) 1994-1998, Thomas G. Lane.
  * libjpeg-turbo Modifications:
- * Copyright (C) 2016, D. R. Commander.
+ * Copyright (C) 2016, 2022, D. R. Commander.
  * For conditions of distribution and use, see the accompanying README.ijg
  * file.
  *
@@ -30,6 +30,7 @@
  * Initialization of a JPEG decompression object.
  * The error manager must already be set up (in case memory manager fails).
  */
+
 #ifdef WITH_VC8000
 
 static void 
@@ -54,7 +55,7 @@ _jpeg_CreateDecompress(j_decompress_ptr cinfo, int version, size_t structsize, b
   {
     struct jpeg_error_mgr *err = cinfo->err;
     void *client_data = cinfo->client_data; /* ignore Purify complaint here */
-    MEMZERO(cinfo, sizeof(struct jpeg_decompress_struct));
+    memset(cinfo, 0, sizeof(struct jpeg_decompress_struct));
     cinfo->err = err;
     cinfo->client_data = client_data;
   }
@@ -93,14 +94,13 @@ _jpeg_CreateDecompress(j_decompress_ptr cinfo, int version, size_t structsize, b
   cinfo->master = (struct jpeg_decomp_master *)
     (*cinfo->mem->alloc_small) ((j_common_ptr)cinfo, JPOOL_PERMANENT,
                                 sizeof(my_decomp_master));
-  MEMZERO(cinfo->master, sizeof(my_decomp_master));
+  memset(cinfo->master, 0, sizeof(my_decomp_master));
 
   if(enalbeHWDecode == TRUE)
     cinfo->master->bHWJpegDeocdeEnable = TRUE;
   else
     cinfo->master->bHWJpegDeocdeEnable = FALSE;
 }
-
 
 #endif
 
@@ -110,6 +110,7 @@ jpeg_CreateDecompress(j_decompress_ptr cinfo, int version, size_t structsize)
 #ifdef WITH_VC8000
   _jpeg_CreateDecompress(cinfo, version, structsize, TRUE);
 #else
+
   int i;
 
   /* Guard against version mismatches between library and caller. */
@@ -129,7 +130,7 @@ jpeg_CreateDecompress(j_decompress_ptr cinfo, int version, size_t structsize)
   {
     struct jpeg_error_mgr *err = cinfo->err;
     void *client_data = cinfo->client_data; /* ignore Purify complaint here */
-    MEMZERO(cinfo, sizeof(struct jpeg_decompress_struct));
+    memset(cinfo, 0, sizeof(struct jpeg_decompress_struct));
     cinfo->err = err;
     cinfo->client_data = client_data;
   }
@@ -168,10 +169,10 @@ jpeg_CreateDecompress(j_decompress_ptr cinfo, int version, size_t structsize)
   cinfo->master = (struct jpeg_decomp_master *)
     (*cinfo->mem->alloc_small) ((j_common_ptr)cinfo, JPOOL_PERMANENT,
                                 sizeof(my_decomp_master));
-  MEMZERO(cinfo->master, sizeof(my_decomp_master));
+  memset(cinfo->master, 0, sizeof(my_decomp_master));
+
 #endif
 }
-
 
 #ifdef WITH_VC8000
 GLOBAL(void)
@@ -187,9 +188,6 @@ jpeg_CreateDecompress_Ext(j_decompress_ptr cinfo, int version, size_t structsize
 	_jpeg_CreateDecompress(cinfo, version, structsize, FALSE);
   }
 }
-#endif
-
-#ifdef WITH_VC8000
 
 static void vc8000_destroy_decompress(j_decompress_ptr cinfo)
 {
@@ -331,13 +329,6 @@ default_decompress_parms(j_decompress_ptr cinfo)
   cinfo->enable_1pass_quant = FALSE;
   cinfo->enable_external_quant = FALSE;
   cinfo->enable_2pass_quant = FALSE;
-
-#ifdef WITH_VC8000
-  //TODO: set vc8000 v4l2 default param
-
-
-#endif
-
 }
 
 
@@ -495,6 +486,7 @@ jpeg_has_multiple_scans(j_decompress_ptr cinfo)
  * Returns FALSE if suspended.  The return value need be inspected only if
  * a suspending data source is used.
  */
+
 #ifdef WITH_VC8000
 static boolean vc8000_finish_decompress(j_decompress_ptr cinfo)
 {
@@ -516,6 +508,7 @@ jpeg_finish_decompress(j_decompress_ptr cinfo)
   vc8000_finish_decompress(cinfo);
   vc8000_destroy_decompress(cinfo);
 #endif
+
   if ((cinfo->global_state == DSTATE_SCANNING ||
        cinfo->global_state == DSTATE_RAW_OK) && !cinfo->buffered_image) {
     /* Terminate final pass of non-buffered mode */

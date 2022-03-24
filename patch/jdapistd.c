@@ -4,7 +4,7 @@
  * This file was part of the Independent JPEG Group's software:
  * Copyright (C) 1994-1996, Thomas G. Lane.
  * libjpeg-turbo Modifications:
- * Copyright (C) 2010, 2015-2020, D. R. Commander.
+ * Copyright (C) 2010, 2015-2020, 2022, D. R. Commander.
  * Copyright (C) 2015, Google, Inc.
  * For conditions of distribution and use, see the accompanying README.ijg
  * file.
@@ -40,6 +40,7 @@ LOCAL(boolean) output_pass_setup(j_decompress_ptr cinfo);
  * Returns FALSE if suspended.  The return value need be inspected only if
  * a suspending data source is used.
  */
+
 #ifdef WITH_VC8000
 typedef enum
 {
@@ -86,6 +87,7 @@ static void vc8000_CreateDecompress(j_decompress_ptr cinfo)
 
 #include <stdlib.h>
 #include <sys/time.h>
+#include <limits.h>
 
 static double getTimeSec(void)
 {
@@ -162,11 +164,14 @@ static boolean vc8000_start_decompress(j_decompress_ptr cinfo)
   
   struct video_fb_info sFBInfo;
   int iRotOP = PP_ROTATION_NONE;
+
+  sFBInfo.frame_buf_no = UINT_MAX;
   
   if(cinfo->master->bHWJpegDirectFBEnable)
   {
 	sFBInfo.frame_buf_w = cinfo->master->sDirectFBParam.fb_width;
 	sFBInfo.frame_buf_h = cinfo->master->sDirectFBParam.fb_height;
+	sFBInfo.frame_buf_no = cinfo->master->sDirectFBParam.fb_no;
 	estimate_output_width = cinfo->master->sDirectFBParam.img_width;
 	estimate_output_height = cinfo->master->sDirectFBParam.img_height;	
 	iRotOP = cinfo->master->sDirectFBParam.rotation_op;
@@ -426,6 +431,7 @@ jpeg_crop_scanline(j_decompress_ptr cinfo, JDIMENSION *xoffset,
   JDIMENSION input_xoffset;
   boolean reinit_upsampler = FALSE;
   jpeg_component_info *compptr;
+  my_master_ptr master = (my_master_ptr)cinfo->master;
 
   if (cinfo->global_state != DSTATE_SCANNING || cinfo->output_scanline != 0)
     ERREXIT1(cinfo, JERR_BAD_STATE, cinfo->global_state);
@@ -475,6 +481,11 @@ jpeg_crop_scanline(j_decompress_ptr cinfo, JDIMENSION *xoffset,
    */
   *width = *width + input_xoffset - *xoffset;
   cinfo->output_width = *width;
+  if (master->using_merged_upsample && cinfo->max_v_samp_factor == 2) {
+    my_merged_upsample_ptr upsample = (my_merged_upsample_ptr)cinfo->upsample;
+    upsample->out_row_width =
+      cinfo->output_width * cinfo->out_color_components;
+  }
 
   /* Set the first and last iMCU columns that we must decompress.  These values
    * will be used in single-scan decompressions.
@@ -528,6 +539,7 @@ jpeg_crop_scanline(j_decompress_ptr cinfo, JDIMENSION *xoffset,
  * this likely signals an application programmer error.  However,
  * an oversize buffer (max_lines > scanlines remaining) is not an error.
  */
+
 #ifdef WITH_VC8000
 
 /**
@@ -1269,6 +1281,7 @@ vc8000_read_raw_data(j_decompress_ptr cinfo, JSAMPIMAGE data,
 
 #endif
 
+
 GLOBAL(JDIMENSION)
 jpeg_read_raw_data(j_decompress_ptr cinfo, JSAMPIMAGE data,
                    JDIMENSION max_lines)
@@ -1281,7 +1294,7 @@ jpeg_read_raw_data(j_decompress_ptr cinfo, JSAMPIMAGE data,
     WARNMS(cinfo, JWRN_TOO_MUCH_DATA);
     return 0;
   }
-  
+
 #ifdef WITH_VC8000
   if(cinfo->master->bHWJpegDecodeDone)
   {
@@ -1293,6 +1306,7 @@ jpeg_read_raw_data(j_decompress_ptr cinfo, JSAMPIMAGE data,
   }
 
 #endif
+
   /* Call progress monitor hook if present */
   if (cinfo->progress != NULL) {
     cinfo->progress->pass_counter = (long)cinfo->output_scanline;

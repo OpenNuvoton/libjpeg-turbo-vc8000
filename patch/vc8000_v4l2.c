@@ -121,9 +121,10 @@ static int v4l2_dequeue_buf(
 /*
  *  Private V4L2 post processing ioctl for VC8K
  */
+
 struct vc8k_pp_params {
-	int  enable_pp;
-	void  *frame_buf_vaddr;          /* virtual address of frame buffer           */
+	int   enable_pp;
+	unsigned int   frame_buf_paddr;           /* physical address of frame buffer          */
 	int   frame_buff_size;
 	int   frame_buf_w;               /* width of frame buffer width               */
 	int   frame_buf_h;               /* height of frame buffer                    */
@@ -133,7 +134,14 @@ struct vc8k_pp_params {
 	int   img_out_h;                 /* image output height on frame buffer       */
 	int   img_out_fmt;               /* image output format                       */
 	int   rotation;
+	int   pp_out_dst;                /* PP output destination.                    */
+					 /* 0: fb0                                    */
+					 /* 1: fb1                                    */
+					 /* otherwise: frame_buf_paddr                */
+	int   libjpeg_mode;		 /* 0: v4l2-only; 1: libjpeg+v4l2             */
+	int   resserved[8];
 };
+
 
 #define VC8KIOC_PP_SET_CONFIG	_IOW ('v', 91, struct vc8k_pp_params)
 #define VC8KIOC_PP_GET_CONFIG	_IOW ('v', 92, struct vc8k_pp_params)
@@ -496,8 +504,8 @@ int vc8000_v4l2_setup_post_processing(struct video *psVideo,
 	struct vc8k_pp_params  sVC8K_PP;
 
 	sVC8K_PP.enable_pp = bEnablePP;
-	sVC8K_PP.frame_buff_size = psFBInfo->frame_buff_size;
-	sVC8K_PP.frame_buf_vaddr= psFBInfo->frame_buf_vaddr;
+	sVC8K_PP.frame_buff_size = psFBInfo->frame_buf_size;
+	sVC8K_PP.frame_buf_paddr= psFBInfo->frame_buf_paddr;
 	sVC8K_PP.frame_buf_w = psFBInfo->frame_buf_w;
 	sVC8K_PP.frame_buf_h = psFBInfo->frame_buf_h;
 	sVC8K_PP.img_out_x = x;
@@ -506,6 +514,9 @@ int vc8000_v4l2_setup_post_processing(struct video *psVideo,
 	sVC8K_PP.img_out_h = h;
 	sVC8K_PP.rotation = rot_op;
 	sVC8K_PP.img_out_fmt = pixel_format;
+	sVC8K_PP.pp_out_dst = psFBInfo->frame_buf_no;
+	sVC8K_PP.libjpeg_mode = 1;
+		
 	ioctl(psVideo->fd, VC8KIOC_PP_SET_CONFIG, sVC8K_PP);
 
 #if defined (ENABLE_DBG)
@@ -807,14 +818,16 @@ int vc8000_jpeg_prepare_decompress(
 	if(bDirectFBOut == true)
 	{
 		//psFBInfo frame buffer parameter provided by caller
-		psFBInfo->frame_buf_vaddr = NULL;
+		psFBInfo->frame_buf_paddr = 0;
+		psFBInfo->direct_fb_out = 1;
 	}
 	else
 	{
-		psFBInfo->frame_buf_vaddr = psVideo->cap_buf_addr[0][0];
-		psFBInfo->frame_buff_size = psVideo->cap_buf_planes_size[0][0];
+		psFBInfo->frame_buf_paddr = 0;
+		psFBInfo->frame_buf_size = 0;
 		psFBInfo->frame_buf_w = psVideo->cap_w;
 		psFBInfo->frame_buf_h = psVideo->cap_h;
+		psFBInfo->direct_fb_out = 0;
 		u32OutputWidth = psVideo->cap_w;
 		u32OutputHeight = psVideo->cap_h;		
 	}

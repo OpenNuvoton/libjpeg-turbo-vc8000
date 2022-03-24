@@ -1,5 +1,5 @@
 #!/bin/bash
-LIBJPEG_TURBO_SRC="libjpeg-turbo-2.1.2"
+LIBJPEG_TURBO_SRC="libjpeg-turbo-2.1.3"
 LIBJPEG_TURBO_BUILD="libjpeg-turbo_target_build"
 LIBJPEG_TURBO_INSTALL="libjpeg-turbo_target_install"
 
@@ -9,9 +9,9 @@ source /usr/local/oecore-x86_64/environment-setup-aarch64-poky-linux
 
 if [ ! -d "$LIBJPEG_TURBO_SRC" ]; then
         echo "Downlod libjpeg_turbo"
-        wget https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/2.1.2.tar.gz
-        tar -xzvf 2.1.2.tar.gz
-        rm -rf 2.1.2.tar.gz
+        wget https://sourceforge.net/projects/libjpeg-turbo/files/2.1.3/libjpeg-turbo-2.1.3.tar.gz
+        tar -xzvf libjpeg-turbo-2.1.3.tar.gz
+        rm -rf libjpeg-turbo-2.1.3.tar.gz
 fi
 
 #copy patch files to source

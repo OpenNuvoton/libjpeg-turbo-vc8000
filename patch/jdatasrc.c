@@ -5,7 +5,7 @@
  * Copyright (C) 1994-1996, Thomas G. Lane.
  * Modified 2009-2011 by Guido Vollbeding.
  * libjpeg-turbo Modifications:
- * Copyright (C) 2013, 2016, D. R. Commander.
+ * Copyright (C) 2013, 2016, 2022, D. R. Commander.
  * For conditions of distribution and use, see the accompanying README.ijg
  * file.
  *
@@ -33,7 +33,6 @@ typedef struct {
   FILE *infile;                 /* source stream */
   JOCTET *buffer;               /* start of buffer */
   boolean start_of_file;        /* have we gotten any data yet? */
-
 } my_source_mgr;
 
 typedef my_source_mgr *my_src_ptr;
@@ -106,7 +105,7 @@ fill_input_buffer(j_decompress_ptr cinfo)
   my_src_ptr src = (my_src_ptr)cinfo->src;
   size_t nbytes;
 
-  nbytes = JFREAD(src->infile, src->buffer, INPUT_BUF_SIZE);
+  nbytes = fread(src->buffer, 1, INPUT_BUF_SIZE, src->infile);
 
   if (nbytes <= 0) {
     if (src->start_of_file)     /* Treat empty input file as fatal error */
@@ -132,7 +131,7 @@ file_fill_input_buffer(j_decompress_ptr cinfo)
   my_src_ptr src = (my_src_ptr)cinfo->master->src_hw_jpeg;
   size_t nbytes;
 
-  nbytes = JFREAD(src->infile, src->buffer, INPUT_BUF_SIZE);
+  nbytes = fread(src->buffer, 1, INPUT_BUF_SIZE, src->infile);
 
   if (nbytes <= 0) {
     if (src->start_of_file)     /* Treat empty input file as fatal error */
@@ -158,7 +157,6 @@ file_seek_file_pos(j_decompress_ptr cinfo, long int offset, int origin)
 
   return u64CurPos;
 }
-
 
 #endif
 
@@ -392,7 +390,5 @@ jpeg_mem_src(j_decompress_ptr cinfo, const unsigned char *inbuffer,
   src->next_input_byte = (const JOCTET *)inbuffer;
   cinfo->master->bSrcTypeMem = TRUE;
 #endif
-
 }
 #endif
-

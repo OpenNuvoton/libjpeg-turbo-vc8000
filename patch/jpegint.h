@@ -162,6 +162,7 @@ struct jpeg_marker_writer {
 
 #ifdef WITH_VC8000
 struct jpeg_direct_fb_param {
+  unsigned int fb_no;
   unsigned int fb_width;
   unsigned int fb_height;
   unsigned int img_width;
@@ -411,12 +412,3 @@ extern const int jpeg_natural_order[]; /* zigzag coef order to natural order */
 
 /* Arithmetic coding probability estimation tables in jaricom.c */
 extern const JLONG jpeg_aritab[];
-
-/* Suppress undefined-structure complaints if necessary. */
-
-#ifdef INCOMPLETE_TYPES_BROKEN
-#ifndef AM_MEMORY_MANAGER       /* only jmemmgr.c defines these */
-struct jvirt_sarray_control { long dummy; };
-struct jvirt_barray_control { long dummy; };
-#endif
-#endif /* INCOMPLETE_TYPES_BROKEN */

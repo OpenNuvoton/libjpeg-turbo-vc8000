@@ -14,6 +14,7 @@ EXTERN(void) jpeg_CreateDecompress_Ext(j_decompress_ptr cinfo, int version, size
 
 EXTERN(int)
 jpeg_fb_dest(j_decompress_ptr cinfo, 
+			unsigned int fb_no,
 			unsigned int fb_width,
             unsigned int fb_height,
             unsigned int img_width,

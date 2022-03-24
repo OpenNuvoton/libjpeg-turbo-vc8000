@@ -11,6 +11,7 @@
 #include "jpeglib_ext.h"
 
 #define FB_DEV_NAME "/dev/fb0"
+#define FB_DEV_NO 1
 #define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
 
 using namespace std;
@@ -20,13 +21,21 @@ static uint8_t *s_pu8FrameBufAddr = NULL;
 static int s_fb_fd = 0;
 
 //Open /dev/fb0 aka ultrafb
-static int openFBDev(struct fb_var_screeninfo *psFBVar)
+static int openFBDev(
+	struct fb_var_screeninfo *psFBVar,
+	int fb_no
+)
 {
 	int err = 0;
+	char szFBDeviceName[20];
 	
-	s_fb_fd = open(FB_DEV_NAME, O_RDWR, 0);
+	strcpy(szFBDeviceName, FB_DEV_NAME);
+	
+	szFBDeviceName[strlen(FB_DEV_NAME) - 1] = '0' + fb_no;
+	
+	s_fb_fd = open(szFBDeviceName, O_RDWR, 0);
 	if (s_fb_fd < 0) {
-		cerr << "Failed to open fb device: " << FB_DEV_NAME << endl;
+		cerr << "Failed to open fb device: " << szFBDeviceName << endl;
 		return -1;
 	}
 
@@ -82,7 +91,8 @@ static int decodeTo(
 
 	jpeg_mem_src(&dinfo, jpegBuf, jpegSize);
 	
-	if(jpeg_fb_dest(&dinfo, 
+	if(jpeg_fb_dest(&dinfo,
+					FB_DEV_NO, 
 					psFBVar->xres, 
 					psFBVar->yres, 
 					u32OuputImgWidth, 
@@ -194,7 +204,7 @@ int main(int argc, char* argv[]) {
     jpegFile = NULL;
 
 	//open ultrafb
-	if(openFBDev(&sFBVar) != 0)
+	if(openFBDev(&sFBVar, FB_DEV_NO) != 0)
 	{
 		cerr << "unable open ultrafb" << endl;
 		goto prog_out;

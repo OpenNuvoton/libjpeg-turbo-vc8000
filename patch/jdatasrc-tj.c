@@ -217,4 +217,5 @@ jpeg_mem_src_tj(j_decompress_ptr cinfo, const unsigned char *inbuffer,
   src->next_input_byte = (const JOCTET *)inbuffer;
   cinfo->master->bSrcTypeMem = TRUE;  
 #endif
+
 }

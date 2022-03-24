@@ -100,10 +100,12 @@ struct video {
 
 // video decode post processing
 struct video_fb_info {
-	void  *frame_buf_vaddr;          /* virtual address of frame buffer           */
-	int   frame_buff_size;
+	void  *frame_buf_paddr;          /* physical address of frame buffer           */
+	int   frame_buf_size;
 	int   frame_buf_w;               /* width of frame buffer width               */
 	int   frame_buf_h;               /* height of frame buffer                    */
+	int	  direct_fb_out;			 /* directly frame buffer output mode          */
+	unsigned int frame_buf_no;       /* frame buffer number for direct fb output */
 };
 
 int vc8000_v4l2_open(struct video *psVideo);
