@@ -194,7 +194,7 @@ jpeg_mem_src_tj(j_decompress_ptr cinfo, const unsigned char *inbuffer,
   src->next_input_byte = (const JOCTET *)inbuffer;
 
 #ifdef WITH_VC8000
-  cinfo->master->bSrcTypeMem = FALSE;  
+  cinfo->master->eJpegSrcType = eJPEG_SRC_UNKNOWN;
 
   if (cinfo->master->src_hw_jpeg == NULL) {     /* first time for this JPEG object? */
     cinfo->master->src_hw_jpeg = (struct jpeg_source_mgr *)
@@ -215,7 +215,7 @@ jpeg_mem_src_tj(j_decompress_ptr cinfo, const unsigned char *inbuffer,
   src->term_source = term_source;
   src->bytes_in_buffer = (size_t)insize;
   src->next_input_byte = (const JOCTET *)inbuffer;
-  cinfo->master->bSrcTypeMem = TRUE;  
+  cinfo->master->eJpegSrcType = eJPEG_SRC_MEM;
 #endif
 
 }

@@ -100,7 +100,7 @@ static double getTimeSec(void)
 }
 
 
-static boolean vc8000_start_decompress(j_decompress_ptr cinfo)
+static int vc8000_start_decompress(j_decompress_ptr cinfo)
 {
   int pixel_format;
   int i32Ret;
@@ -139,14 +139,14 @@ static boolean vc8000_start_decompress(j_decompress_ptr cinfo)
     else if(eSubsampling == eJPEG_SUBSAMPLING_422)
       pixel_format = V4L2_PIX_FMT_YUYV;  //packet format
     else
-      return FALSE;    
+      return -1;    
   }
 //  else if(cinfo->out_color_space == JCS_YCbCr)
 //  {
 //    pixel_format = V4L2_PIX_FMT_YUYV;
 //  }
   else 
-	return FALSE;
+	return -2;
 
   jpeg_calc_output_dimensions(cinfo);
 
@@ -181,7 +181,7 @@ static boolean vc8000_start_decompress(j_decompress_ptr cinfo)
 	//output to memory buffer case. 
 	//output dimension is too small, maybe using software decoder is better.
     if((estimate_output_width < 64) && (estimate_output_height < 64))
-		return FALSE;
+		return -3;
   }
 
   if((iRotOP == PP_ROTATION_RIGHT_90) || (iRotOP == PP_ROTATION_LEFT_90))
@@ -196,7 +196,7 @@ static boolean vc8000_start_decompress(j_decompress_ptr cinfo)
 	((decode_src_width < estimate_output_width) && (decode_src_height > estimate_output_height)))
   {
 	//the scale up/down of width and height must be consistent
-	return FALSE;
+	return -4;
   }
 
   double dStartTime = getTimeSec();
@@ -214,8 +214,8 @@ static boolean vc8000_start_decompress(j_decompress_ptr cinfo)
 			pixel_format);
 
   if(i32Ret != 0) {
-	printf("Not support by VC8000, output dimension width: %d, height: %d \n", estimate_output_width, estimate_output_height);
-    return FALSE;
+//	printf("Not support by VC8000, output dimension width: %d, height: %d \n", estimate_output_width, estimate_output_height);
+    return -5;
   }
 
 //  printf("vc8000_jpeg_prepare_decompress time %f sec\n", getTimeSec() - dStartTime);
@@ -230,24 +230,24 @@ static boolean vc8000_start_decompress(j_decompress_ptr cinfo)
   {
 	  //release resource
 	  vc8000_jpeg_release_decompress(&cinfo->master->sHWJpegVideo);
-	  return FALSE;
+	  return -6;
   }
   
   //fill bitstream to bitstream buffer
   struct jpeg_source_mgr *src_mgr = cinfo->master->src_hw_jpeg;
 
-  if(cinfo->master->bSrcTypeMem)
+  if(cinfo->master->eJpegSrcType == eJPEG_SRC_MEM)
   {
     if(src_mgr->bytes_in_buffer > u32StreamBufSize)
     {
 	  //release resource
 	  vc8000_jpeg_release_decompress(&cinfo->master->sHWJpegVideo);
-	  return FALSE;
+	  return -7;
 	}
     memcpy(pchStreamBuf, src_mgr->next_input_byte, src_mgr->bytes_in_buffer);
 	u32StreamLen = src_mgr->bytes_in_buffer; 
   }
-  else
+  else if(cinfo->master->eJpegSrcType == eJPEG_SRC_FILE)
   {
     long u64CurFilePos = cinfo->master->seek_file_pos(cinfo, 0, SEEK_SET);
 
@@ -265,7 +265,17 @@ static boolean vc8000_start_decompress(j_decompress_ptr cinfo)
     {
 	  //release resource
 	  vc8000_jpeg_release_decompress(&cinfo->master->sHWJpegVideo);
-	  return FALSE;
+	  return -8;
+	}
+  }
+  else
+  {
+    struct jpeg_source_mgr *src = cinfo->src;
+
+	if(src)
+	{
+      vc8000_jpeg_release_decompress(&cinfo->master->sHWJpegVideo);
+      return -9;
 	}
   }
 
@@ -284,7 +294,7 @@ static boolean vc8000_start_decompress(j_decompress_ptr cinfo)
   {
     //release resource
     vc8000_jpeg_release_decompress(&cinfo->master->sHWJpegVideo);
-    return FALSE;
+    return -10;
   }
 
 //  printf("vc8000_jpeg_poll_decode_done time %f sec\n", getTimeSec() - dStartTime);
@@ -295,7 +305,7 @@ static boolean vc8000_start_decompress(j_decompress_ptr cinfo)
   cinfo->master->u32DecodeImageHeight = cinfo->master->sHWJpegVideo.cap_h;
   cinfo->master->bHWJpegDecodeDone = TRUE;
 
-  return TRUE;
+  return 0;
 }
 
 
@@ -305,13 +315,18 @@ GLOBAL(boolean)
 jpeg_start_decompress(j_decompress_ptr cinfo)
 {
 #ifdef WITH_VC8000
+  int ret;
 
   if(cinfo->master->bHWJpegDeocdeEnable == TRUE) {
     vc8000_CreateDecompress(cinfo);
   }
 
   if(cinfo->master->bHWJpegCodecOpened) {
-    vc8000_start_decompress(cinfo);
+	ret = vc8000_start_decompress(cinfo);
+    if(ret != 0)
+    {
+		printf("fallback to software decompress reason %d \n", ret);
+	}
   }
 
 #endif

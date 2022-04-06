@@ -145,7 +145,7 @@ struct vc8k_pp_params {
 
 #define VC8KIOC_PP_SET_CONFIG	_IOW ('v', 91, struct vc8k_pp_params)
 #define VC8KIOC_PP_GET_CONFIG	_IOW ('v', 92, struct vc8k_pp_params)
-//#define VC8KIOC_GET_BUF_DMA_ADDR	_IOWR ('v', 193, struct v4l2_buffer)
+#define VC8KIOC_GET_BUF_PHY_ADDR	_IOWR ('v', 193, struct v4l2_buffer)
 
 int vc8000_v4l2_open(struct video *psVideo)
 {
@@ -475,13 +475,15 @@ int vc8000_v4l2_setup_capture(struct video *psVideo, int pixel_format, int buf_c
 		buf.memory = V4L2_MEMORY_MMAP;
 		buf.index = n;
 
-		ret = ioctl(vid->fd, VC8KIOC_GET_BUF_DMA_ADDR, &buf);
+		ret = ioctl(vid->fd, VC8KIOC_GET_BUF_PHY_ADDR, &buf);
 		if (ret != 0) {
-			fprintf(stderr, "QUERYBUF failed on CAPTURE queue (%s) \n", strerror(errno));
+			fprintf(stderr, "VC8KIOC_GET_BUF_PHY_ADDR failed on CAPTURE queue (%s) \n", strerror(errno));
 			return -1;
 		}
 		
-		vid->cap_buf_dma_addr[n][0] = buf.reserved;
+		fprintf(stderr, "VC8KIOC_GET_BUF_PHY_ADDR address:%x \n", buf.reserved);
+		
+//		vid->cap_buf_dma_addr[n][0] = buf.reserved;
 	}
 #endif
 #if defined (ENABLE_DBG)
@@ -517,11 +519,11 @@ int vc8000_v4l2_setup_post_processing(struct video *psVideo,
 	sVC8K_PP.pp_out_dst = psFBInfo->frame_buf_no;
 	sVC8K_PP.libjpeg_mode = 1;
 		
-	ioctl(psVideo->fd, VC8KIOC_PP_SET_CONFIG, sVC8K_PP);
+	ioctl(psVideo->fd, VC8KIOC_PP_SET_CONFIG, &sVC8K_PP);
 
 #if defined (ENABLE_DBG)
 //	printf("DDDDD vc8000_v4l2_setup_post_processing sVC8K_PP.enable_pp %x \n", sVC8K_PP.enable_pp);
-	printf("DDDDD vc8000_v4l2_setup_post_processing sVC8K_PP.frame_buf_vaddr %p \n", sVC8K_PP.frame_buf_vaddr);
+	printf("DDDDD vc8000_v4l2_setup_post_processing sVC8K_PP.frame_buf_paddr %p \n", sVC8K_PP.frame_buf_paddr);
 //	printf("DDDDD vc8000_v4l2_setup_post_processing sVC8K_PP.frame_buff_size %d \n", sVC8K_PP.frame_buff_size);
 	printf("DDDDD vc8000_v4l2_setup_post_processing sVC8K_PP.frame_buf_w %d \n", sVC8K_PP.frame_buf_w);
 	printf("DDDDD vc8000_v4l2_setup_post_processing sVC8K_PP.frame_buf_h %d \n", sVC8K_PP.frame_buf_h);
@@ -643,9 +645,12 @@ int vc8000_v4l2_dequeue_capture(
 
 	*finished = 0;
 
-	if (buf.flags & V4L2_QCOM_BUF_FLAG_EOS ||
-	    buf.m.planes[0].bytesused == 0)
+	if (buf.flags & V4L2_BUF_FLAG_DONE ||
+	    buf.m.planes[0].bytesused)
 		*finished = 1;
+
+	if (buf.flags & V4L2_BUF_FLAG_ERROR)
+		*finished = 0;
 
 	*bytesused = buf.m.planes[0].bytesused;
 	*n = buf.index;
@@ -878,12 +883,13 @@ int vc8000_jpeg_inqueue_bitstream_buffer(
 )
 {
 	int n;
+	int ret;
 	//Get output dequeued buffer index
 	for(n = 0; n < psVideo->out_buf_cnt; n ++)
 	{
 		if(psVideo->out_buf_addr[n] == pchBufferAddr)
 		{
-			vc8000_v4l2_queue_output(psVideo, n, u32StreamLen);
+			ret = vc8000_v4l2_queue_output(psVideo, n, u32StreamLen);
 			psVideo->out_buf_flag[n] = eV4L2_BUF_INQUEUE;
 			return 0;
 		}
@@ -959,6 +965,11 @@ next_event:
 
 	*p_cap_index = cap_index;
 
+	if (finished == 0) {
+		return -3;
+	}
+
+//	fprintf(stdout, "vc8000_jpeg_poll_decode_done result %d \n", ret);
 	return ret;
 }
 

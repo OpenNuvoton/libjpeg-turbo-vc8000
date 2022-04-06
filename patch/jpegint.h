@@ -171,6 +171,13 @@ struct jpeg_direct_fb_param {
   unsigned int img_pos_y;
   int rotation_op;
 };
+
+typedef enum {
+	eJPEG_SRC_UNKNOWN,
+	eJPEG_SRC_MEM,	
+	eJPEG_SRC_FILE	
+}E_JPEG_SRC_TYPE;
+
 #endif
 
 /* Master control module */
@@ -193,7 +200,7 @@ struct jpeg_decomp_master {
 
 #ifdef WITH_VC8000
   long (*seek_file_pos) (j_decompress_ptr cinfo, long int offset, int origin);
-  boolean bSrcTypeMem; 
+  E_JPEG_SRC_TYPE eJpegSrcType; 
 
   /* Source of compressed data for HW JPEG decoder*/
   struct jpeg_source_mgr *src_hw_jpeg;
@@ -211,7 +218,8 @@ struct jpeg_decomp_master {
 
   boolean bHWJpegDirectFBEnable;
   struct jpeg_direct_fb_param sDirectFBParam;
-
+  
+  JOCTET *pMemSrcBuf;
 #endif
 };
 

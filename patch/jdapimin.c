@@ -198,6 +198,12 @@ static void vc8000_destroy_decompress(j_decompress_ptr cinfo)
   if(cinfo->master->bHWJpegCodecOpened)
     vc8000_v4l2_close(&cinfo->master->sHWJpegVideo);
 
+  if(cinfo->master->pMemSrcBuf)
+  {
+    free(cinfo->master->pMemSrcBuf);
+    cinfo->master->pMemSrcBuf = NULL;
+  }
+
   cinfo->master->bHWJpegCodecOpened = FALSE;  
   cinfo->master->bHWJpegDecodeDone = FALSE;
 }
@@ -367,6 +373,59 @@ jpeg_read_header(j_decompress_ptr cinfo, boolean require_image)
   if (cinfo->global_state != DSTATE_START &&
       cinfo->global_state != DSTATE_INHEADER)
     ERREXIT1(cinfo, JERR_BAD_STATE, cinfo->global_state);
+
+#if 0 //def WITH_VC8000
+  if(cinfo->master->eJpegSrcType == eJPEG_SRC_UNKNOWN)
+  {
+    struct jpeg_source_mgr *src = cinfo->src;
+	uint32_t u32BitStreamLen = 0;
+	uint8_t *pu8BitStreamBufPtr = NULL;
+	uint8_t *pu8TempBufPtr = NULL;
+	boolean  bCopyDone = FALSE;
+	
+	if(src)
+	{
+		/* Initialize application's data source module */
+		(*cinfo->src->init_source)(cinfo);
+
+		while(src->fill_input_buffer(cinfo)){
+
+			if(src->bytes_in_buffer) {
+				pu8TempBufPtr = realloc(pu8BitStreamBufPtr, u32BitStreamLen + src->bytes_in_buffer + 100);
+				if(pu8TempBufPtr)
+					pu8BitStreamBufPtr = pu8TempBufPtr;
+				else
+					break;
+				memcpy(pu8BitStreamBufPtr + u32BitStreamLen, src->next_input_byte, src->bytes_in_buffer);
+				u32BitStreamLen += src->bytes_in_buffer;
+
+				src->bytes_in_buffer = 0;
+				
+				if((pu8BitStreamBufPtr[u32BitStreamLen - 2] == (JOCTET)0xFF) &&
+					(pu8BitStreamBufPtr[u32BitStreamLen - 1] == (JOCTET)JPEG_EOI))
+				{
+					bCopyDone = TRUE;
+					break;
+				}
+			}
+		}
+		
+		if(bCopyDone)
+		{
+			(*cinfo->src->term_source)(cinfo);
+			cinfo->src = NULL;
+			jpeg_mem_src(cinfo, pu8BitStreamBufPtr, u32BitStreamLen);
+			cinfo->master->pMemSrcBuf = pu8BitStreamBufPtr;
+		}
+		else
+		{
+			if(pu8BitStreamBufPtr)
+				free(pu8BitStreamBufPtr);
+		}
+    }
+  }
+
+#endif
 
   retcode = jpeg_consume_input(cinfo);
 
