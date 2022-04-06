@@ -7,7 +7,7 @@ VC8000 JPEG decoder support
 * Direct output to ultrafb(/dev/fb0)
 ## Requirement  
 1. MA35D1 SDK package which exported form MA35D1 Yocto project.
-2. libjpeg-turbo v2.1.2
+2. libjpeg-turbo v2.1.3
 3. pathelf tool  
     #sudo apt install patchelf 
 ## Build  
