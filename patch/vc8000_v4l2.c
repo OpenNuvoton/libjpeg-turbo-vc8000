@@ -158,13 +158,15 @@ int vc8000_v4l2_open(struct video *psVideo)
 	memset(strVideoDevNode, 0, 50);
 	strcpy(strVideoDevNode, DEFAULT_VC8000_DEV_NAME);
 
+	psVideo->fd = -1;
+	pthread_mutex_lock(&s_tHantroLock);
+
 	for( i = 0; i < VC8000_DEV_MAX_NO; i ++) {
 		sprintf(strVideoDevNode + i32DefaultDevNodeLen - 1, "%d", i);
 
-		pthread_mutex_lock(&s_tHantroLock);
 		psVideo->fd = open(strVideoDevNode, O_RDWR, 0);
 		if (psVideo->fd < 0) {
-			fprintf(stderr, "Failed to open video decoder: %s \n", strVideoDevNode);
+			fprintf(stderr, "Warning: Unable open video decoder: %s \n", strVideoDevNode);
 			psVideo->fd = -1;
 			continue;
 		}
@@ -172,7 +174,7 @@ int vc8000_v4l2_open(struct video *psVideo)
 		memzero(cap);
 		ret = ioctl(psVideo->fd, VIDIOC_QUERYCAP, &cap);
 		if (ret) {
-			fprintf(stderr, "Failed to verify capabilities \n");
+			fprintf(stderr, "Warning: Unable verify capabilities \n");
 			close(psVideo->fd);
 			psVideo->fd = -1;
 			continue;
@@ -186,7 +188,7 @@ int vc8000_v4l2_open(struct video *psVideo)
 		if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE_MPLANE) ||
 			!(cap.capabilities & V4L2_CAP_VIDEO_OUTPUT_MPLANE) ||
 			!(cap.capabilities & V4L2_CAP_STREAMING)) {
-			fprintf(stderr, "Insufficient capabilities for video device (is %s correct?) \n", strVideoDevNode);
+			fprintf(stderr, "Warning: Insufficient capabilities for video device (is %s correct?) \n", strVideoDevNode);
 			close(psVideo->fd);
 			psVideo->fd = -1;
 			continue;
