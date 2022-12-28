@@ -323,10 +323,10 @@ jpeg_start_decompress(j_decompress_ptr cinfo)
 
   if(cinfo->master->bHWJpegCodecOpened) {
 	ret = vc8000_start_decompress(cinfo);
-    if(ret != 0)
-    {
-		printf("fallback to software decompress reason %d \n", ret);
-	}
+//    if(ret != 0)
+//    {
+//		printf("JPEG fallback to software decompress reason %d \n", ret);
+//    }
   }
 
 #endif
